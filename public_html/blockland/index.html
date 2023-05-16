@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Blockland - a multi-player game</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="description" content="Blockland is a multi-player game. Using the Three.js library. author:Nik Lever ©2018 category:application-javascript" />
+		<meta property="og:url" content="http://niksgames.com/blockland" />
+		<meta property="og:type" content="product" />
+		<meta property="og:title" content="Blockland - a multi-player game" />
+		<meta property="og:description" content="Blockland is a multi-player game. Using the Three.js library. author:Nik Lever ©2018 category:application-javascript" />
+		<meta property="og:image" content="http://niksgames.com/blockland/assets/blockland-og.jpg" />
+		<meta property="og:image:type" content="image/jpeg" />
+		<meta property="og:image:width" content="1265" />
+		<meta property="og:image:height" content="817" />
+		<meta property="og:image:alt" content="Blockland - a multi-player game" />
+		<meta property='og:video' content='https://www.youtube.com/v/1r9V_JEEMlA' />
+		<link href="https://fonts.googleapis.com/css?family=IBM+Plex+Sans|Kavivanar" rel="stylesheet">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#message{
+				position:absolute;
+				left: 50%;
+				top: 50%;
+				transform: translateX(-50%) translateY(-50%);
+				font-family: 'Kavivanar', san-serif;
+				font-size: 40px;
+				width:80%;
+				max-width:280px;
+				padding: 15px 15px 50px 15px;
+				text-align: center;
+				display:none;
+				align-content: center;
+				justify-content: center;
+				background-color: aliceblue;
+				border: medium solid #3D455C;
+				border-radius: 20px;
+				color: #3D455C;
+				z-index: 99;
+			}
+			#message_ok{
+				position: absolute;
+				bottom: 10px;
+				padding: 10px 20px 10px 20px;
+				font-family: sans-serif;
+				font-size: 20px;
+				background-color: #3D455C;
+				color: #fff;
+				border-radius: 8px;
+				border: medium solid #696882;
+			}
+			#chat{
+				position: absolute;
+				width: 100%;
+				height: 40px;
+				bottom: -40px;
+				transition: all 0.5s;
+			}
+			form { background: #000; padding: 3px; width: 100%; }
+      		form input { border: 0; padding: 10px; width: 88%; margin-right: .5%; }
+      		form button { width: 8%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+			#my_select{
+				/* display: flex;
+				flex-direction: column;
+				flex-wrap:nowrap; */
+				justify-content: space-between;
+				/* align-content: space-between; */
+			}
+			.selectBox{
+				margin-right: 20px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div display="none" id = "hello" >
+			<p id ="my_name" > </p>
+			<ul id="room-list" class="rooms"  >
+			</ul>
+		</div>
+		
+		<form class="name" id="name-form">
+			<input id="m1" autocomplete="off" placeholder="请输入姓名"/>
+			<button id="nameSubmit">Enter a username</button>
+		</form>
+		<label id="my_select_label" for="my_select">选择模型</label>
+		<div id="my_select" >
+			<label >男</label>
+			<input  type="radio" name="model" value="1" checked="checked">
+			<label >女</label>
+			<input type="radio" name="model" value="0">
+			
+		</div>
+		<form class="rooms" id="room-form" display="none" >
+			
+			<input id="m2" autocomplete="off" />
+			<button id="roomSubmit">Create and join a new room</button>
+		</form>
+		<div id="message">
+			<p id="message_text"></p>
+			<button id="message_ok">OK</button>
+		</div>
+		<div id="chat">
+			<form id="msg-form" action="">
+      			<input id="m" autocomplete="off" /><button>Send</button>
+    		</form>
+		</div>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/92/three.min.js"></script>
+		<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+		<script src="/socket.io/socket.io.js"></script>
+		
+		<script src= "libs/inflate.min.js"></script>
+		<script src="libs/FBXLoader.js"></script>
+		<script src="libs/Detector.js"></script>
+		<script src="libs/toon3d.js"></script>
+		<script src="game.js"></script>
+		
+		</script>
+		<script>
+
+			var game;
+			var my_name=100;
+			var player_id;
+			const socket = io.connect();
+			socket.on('setId', function(data){
+				player_id = data.id;
+			});
+
+			const models = [
+			"Random",
+			"BeachBabe",
+			"Doctor",
+			"Housewife",
+			"Prostitute",
+			"RiotCop",
+			"Robber",
+			"Streetman",
+			"Waitress",
+			"xg",
+			"BusinessMan",
+			"FireFighter",
+			"Policeman",
+			"Punk",
+			"Roadworker",
+			"Sheriff",
+			"Trucker"];
+			if(sessionStorage.getItem("selectM")==undefined)
+			{
+				sessionStorage.setItem("selectM",models[0]);
+			}
+			const select_form= document.getElementById("my_select");
+			select_form.innerHTML="";
+			for(let value of models)
+			{
+				const spanBox = document.createElement("span");
+				spanBox.setAttribute( "class","selectBox")
+				const theLabel = document.createElement("label");
+				theLabel.innerHTML = value;
+				const theInput = document.createElement("input");
+				theInput.type = "radio";
+				theInput.name = "model";
+				theInput.value = value;
+				if(sessionStorage.getItem("selectM")==value)
+				{
+					theInput.checked = "checked";
+				}
+				theInput.addEventListener("click",function(event)
+				{
+					sessionStorage.setItem("selectM",value);
+				})
+				spanBox.appendChild(theLabel);
+				spanBox.appendChild(theInput);
+				console.log(spanBox);
+				select_form.appendChild(spanBox);
+			}
+			var roomList = [];
+			function enterRoom(myroom)
+			{
+				if(sessionStorage.getItem('name'))
+				{
+					game = new Game(socket,player_id,sessionStorage.getItem('name'),sessionStorage.getItem("selectM"));
+					socket.emit("join room",myroom);
+					document.getElementById("hello").style.position="absolute";
+					document.getElementById("room-form").style.display="none"
+					document.getElementById("room-list").style.display="none"
+					document.getElementById("my_select_label").style.display="none"
+					document.getElementById("my_select").style.display="none"
+				}else
+				{
+					window.alert('请输入昵称')
+				}
+			}
+			var selectedModel ="";
+			var selectedM = document.getElementsByName("model");
+			for(let value of selectedM)
+			{
+				console.log(value)
+				
+			}
+			
+
+			document.addEventListener("DOMContentLoaded", function(){
+					if(sessionStorage.getItem('name'))
+					{
+						socket.emit('set username',sessionStorage.getItem('name'));
+						console.log("ok")
+						document.getElementById("my_name").innerHTML = "Hello,"+ sessionStorage.getItem('name');
+						document.getElementById("hello").style.display = "";
+						document.getElementById("name-form").style.display="none";
+						document.getElementById("room-form").style.display=""
+					}
+					
+				}
+			);
+			document.getElementById("room-form").style.display="none";
+			
+			
+			
+			socket.on("getRooms",function(rooms)
+			{
+				const room= document.getElementById('room-list');
+				room.innerHTML="";
+				console.log(rooms)
+				for(let i  = 0 ; i < rooms.length;i++)
+				{
+					roomList.push(room[i]);
+					let  a=document.createElement("li");
+					let b = document.createElement("span");
+					let button = document.createElement("button");
+					button.innerHTML="Enter";
+					button.addEventListener("click",
+					function()
+					{
+						console.log(rooms[i]);
+						enterRoom(rooms[i]);
+					})
+					b.innerHTML = rooms[i];
+					a.appendChild(b);
+					a.appendChild(button);
+					room.appendChild(a);
+				}
+			})
+			console.log(document.getElementById("nameSubmit"))
+
+			document.getElementById("nameSubmit").addEventListener("click",function(event)
+			{
+				event.preventDefault();
+				
+				const nameText = document.getElementById("m1");
+				console.log(nameText)
+				console.log(nameText.value)
+				if(nameText.value=="")
+				{
+					console.log("no")
+					nameText.placeholder="姓名为空";
+				}else
+				{
+					socket.emit('set username', nameText.value);
+					
+					document.getElementById("name-form").style.display="none";
+					
+
+					sessionStorage.setItem("name",nameText.value);
+					document.getElementById("room-form").style.display=""
+
+					document.getElementById("my_name").innerHTML = "Hello,"+ sessionStorage.getItem('name');
+
+					document.getElementById("hello").style.display = "";
+				}
+				console.log('aaa');
+			})
+			document.getElementById("roomSubmit").addEventListener("click",function(event)
+			{
+				event.preventDefault();
+				const roomText = document.getElementById("m2");
+				console.log(roomText)
+				console.log(roomText.value)
+				if(roomText.value=="")
+				{
+					console.log("no")
+					roomText.placeholder="房间名为空";
+				}else
+				{
+					if(roomList.includes (roomText.value)==false)
+					{
+						socket.emit('new room', roomText.value);
+						console.log(document.getElementById("name-form").style.display)
+						document.getElementById("name-form").style.display="none";
+						console.log(roomText.style.display)
+						document.getElementById("room-form").style.display="none"
+					}
+					
+				}
+				console.log('aaa');
+			})
+		</script>
+	</body>
+</html>
+
+
